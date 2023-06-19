@@ -2,6 +2,7 @@ globals [
   tamanho-campo
   energia-maxima
   velocidade-maxima
+  distancia-seguranca
 ]
 
 breed [ criancas crianca ]
@@ -14,13 +15,8 @@ turtles-own [
   energia
   velocidade
   pegadora ; atributo para marcar a tartaruga como "pegadora"
+  fugindo
 ]
-
-to criar-paredes-aleatorias
-  repeat 3 [
-    let wall-size 10 ; tamanho da parede
-  ]
-end
 
 ; função para desenhar as bordas do campo e marcar as paredes
 to desenhar-paredes
@@ -39,13 +35,14 @@ end
 ; função para criar campo
 to criar-mundo
   ; tamanho do mundo
-  resize-world -25 25 -25 25
+  let x (tamanho-campo / 2)
+  let y 0 - x
+  resize-world y x y x
   ask patches [
     set pcolor black
     set tipo "" ; atributo vazio para patches não pertencentes a paredes
   ]
   desenhar-paredes
-  criar-paredes-aleatorias
 end
 
 to setup
@@ -54,10 +51,11 @@ to setup
   set-default-shape turtles "circle 2"
   ; tamanho do campo
   set tamanho-campo 100
+  set distancia-seguranca 25
   ; energia máxima
   set energia-maxima 100
   ; velocidade máxima
-  set velocidade-maxima 100
+  set velocidade-maxima 0.5
   ; cria o campo
   criar-mundo
   ; cria as tartarugas
@@ -71,8 +69,11 @@ to setup
       setxy random-pxcor random-pycor
     ]
     set energia energia-maxima
-    set velocidade random velocidade-maxima
+    set velocidade 0.5 + (random-float 0.5)
+    ; set velocidade random velocidade-maxima
     set pegadora false ; atributo "pegadora" definido como falso para todas as tartarugas
+    set fugindo false
+    set size 2
   ]
   ; Seleciona uma tartaruga aleatória como "pegadora"
   let random-turtle one-of turtles
@@ -88,39 +89,54 @@ to go
 
   ask criancas [
     correr
-    set energia energia - 0.01
+    set energia energia - 0.1
+    ; set velocidade velocidade * (energia / 100)
     if pegadora = true [
       pegar-crianca
     ]
-    if energia <= 0.0 [
-      die
+  ]
+
+  ask one-of turtles with [pegadora = true] [
+    let target min-one-of other turtles [distance myself] ; seleciona a tartaruga mais próxima como alvo
+    face target ; direciona a "pegadora" para o alvo
+    let next-patch patch-ahead 0.5
+    if [tipo] of next-patch != "parede" [
+      fd velocidade
     ]
   ]
 
   tick
 end
 
-to correr  ; turtle procedure
-  rt random 50
-  lt random 50
-  let next-patch patch-ahead 0.1 ; obtém o próximo patch após o movimento
-  if [tipo] of next-patch != "parede" [
-      fd 0.1
+to correr
+  if not pegadora [
+    let target one-of turtles with [pegadora = true]
+    if target != nobody [
+      let distance-to-target distance target
+      if distance-to-target <= distancia-seguranca [
+        set fugindo true
+      ]
+      if fugindo and not (distance-to-target <= distancia-seguranca) [
+        set fugindo false
+      ]
+      if fugindo [
+        set heading (towards target + 180)
+        let next-patch patch-ahead 0.5
+        if [tipo] of next-patch != "parede" [
+          fd velocidade
+        ]
+      ]
+      if not fugindo [
+        set heading (towards patch 0 0)
+        let outra-crianca one-of other criancas-here
+        let next-patch patch-ahead 0.5
+        if [tipo] of next-patch != "parede" and (outra-crianca = nobody) [
+          fd velocidade / 2
+        ]
+      ]
+    ]
   ]
-  bounce
 end
-
-to bounce  ;; turtle procedure
-  ; check: hitting left or right wall?
-  if abs [pxcor] of patch-ahead 0.1 = max-pxcor
-    ; if so, reflect heading around x axis
-    [ set heading (- heading) ]
-  ; check: hitting top or bottom wall?
-  if abs [pycor] of patch-ahead 0.1 = max-pycor
-    ; if so, reflect heading around y axis
-    [ set heading (180 - heading) ]
-end
-
 
 to pegar-crianca
   let crianca-pega one-of other criancas-here ; seleciona uma das outras crianças no mesmo patch
@@ -137,11 +153,11 @@ end
 GRAPHICS-WINDOW
 210
 10
-728
-529
+723
+524
 -1
 -1
-10.0
+5.0
 1
 10
 1
@@ -151,10 +167,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--25
-25
--25
-25
+-50
+50
+-50
+50
 1
 1
 1
