@@ -1,7 +1,10 @@
 globals [
   tamanho-campo
+  tamanho-criancas
   energia-maxima
+  energia-minima
   velocidade-maxima
+  velocidade-minima
   distancia-seguranca
 ]
 
@@ -33,7 +36,7 @@ to desenhar-paredes
 end
 
 ; função para criar campo
-to criar-mundo
+to setup-mundo
   ; tamanho do mundo
   let x (tamanho-campo / 2)
   let y 0 - x
@@ -45,101 +48,116 @@ to criar-mundo
   desenhar-paredes
 end
 
-to setup
-  clear-all
-  ; as tartarugas são representadas por circulos
-  set-default-shape turtles "circle 2"
-  ; tamanho do campo
-  set tamanho-campo 100
-  set distancia-seguranca 25
-  ; energia máxima
-  set energia-maxima 100
-  ; velocidade máxima
-  set velocidade-maxima 0.5
-  ; cria o campo
-  criar-mundo
-  ; cria as tartarugas
+to setup-criancas
   let min-x min-pxcor + 1
   let max-x max-pxcor - 1
   let min-y min-pycor + 1
   let max-y max-pycor - 1
-  create-criancas 10 [
+  set-default-shape turtles "circle 2"
+  create-criancas 20 [
     setxy random-xcor random-ycor
     while [xcor < min-x or xcor > max-x or ycor < min-y or ycor > max-y] [
       setxy random-pxcor random-pycor
     ]
     set energia energia-maxima
-    set velocidade 0.5 + (random-float 0.5)
+    set velocidade random-float (velocidade-maxima - velocidade-minima) + velocidade-minima
     ; set velocidade random velocidade-maxima
     set pegadora false ; atributo "pegadora" definido como falso para todas as tartarugas
     set fugindo false
-    set size 2
+    set size tamanho-criancas
   ]
-  ; Seleciona uma tartaruga aleatória como "pegadora"
+end
+
+to setup-pegadora
   let random-turtle one-of turtles
   ask random-turtle [
     set pegadora true
     set shape "circle"
   ]
+end
+
+to setup
+  clear-all
+  ; constantes
+  set tamanho-campo 100
+  set tamanho-criancas 3
+  set distancia-seguranca 10
+  set energia-maxima 1.0
+  set energia-minima 0.0
+  set velocidade-maxima 1.0
+  set velocidade-minima 1
+  ; cria o campo
+  setup-mundo
+  ; cria as tartarugas e seleciona uma pegadora
+  setup-criancas
+  setup-pegadora
   reset-ticks
 end
 
 to go
   if not any? turtles [ stop ]
-
   ask criancas [
-    correr
-    set energia energia - 0.1
-    ; set velocidade velocidade * (energia / 100)
-    if pegadora = true [
-      pegar-crianca
-    ]
+    perseguir
+    fugir
+    if energia < energia-minima [ die ]
   ]
-
-  ask one-of turtles with [pegadora = true] [
-    let target min-one-of other turtles [distance myself] ; seleciona a tartaruga mais próxima como alvo
-    face target ; direciona a "pegadora" para o alvo
-    let next-patch patch-ahead 0.5
-    if [tipo] of next-patch != "parede" [
-      fd velocidade
-    ]
-  ]
-
   tick
 end
 
-to correr
-  if not pegadora [
-    let target one-of turtles with [pegadora = true]
+to perseguir
+  if pegadora = true [
+    ask turtles with [pegadora = true] [
+      let target min-one-of other turtles with [ pegadora = false ] [ distance myself ] ; seleciona a tartaruga mais próxima como alvo
+      if target != nobody [
+        face target ; direciona a "pegadora" para o alvo
+        pegar
+      ]
+    ]
+    correr
+  ]
+end
+
+to fugir
+  if not pegadora [ ; crianças que estão fugindo da pegadora
+    let target one-of turtles with [pegadora = true] ; miram na criança pegadora
     if target != nobody [
-      let distance-to-target distance target
-      if distance-to-target <= distancia-seguranca [
-        set fugindo true
+      let distance-to-target distance target ; calcula distância da criança pegadora
+      if distance-to-target <= distancia-seguranca [ ; se a distância for menor que uma distância de segurança
+        set fugindo true ; começa a fugir
       ]
       if fugindo and not (distance-to-target <= distancia-seguranca) [
         set fugindo false
       ]
-      if fugindo [
-        set heading (towards target + 180)
-        let next-patch patch-ahead 0.5
-        if [tipo] of next-patch != "parede" [
-          fd velocidade
-        ]
+      if fugindo [ ; se a criança estiver fugindo
+        set heading (towards target + 180) ; ira se direcionar para a direção oposta da pegadora
       ]
-      if not fugindo [
-        set heading (towards patch 0 0)
-        let outra-crianca one-of other criancas-here
-        let next-patch patch-ahead 0.5
-        if [tipo] of next-patch != "parede" and (outra-crianca = nobody) [
-          fd velocidade / 2
-        ]
-      ]
+      rt random 45
+      lt random 45
+      correr
     ]
   ]
 end
 
-to pegar-crianca
-  let crianca-pega one-of other criancas-here ; seleciona uma das outras crianças no mesmo patch
+to correr
+    if patch-ahead (tamanho-criancas + (velocidade * energia)) != nobody [
+      if [tipo] of patch-ahead (tamanho-criancas + (velocidade * energia)) = "parede" [ ; se movimenta se não houver uma parede na frente
+        let choice random 1
+        (ifelse
+          choice = 0 [
+            lt (random 90) + 90
+          ]
+          choice = 1 [
+            rt (random 90) + 90
+        ])
+      ]
+      fd velocidade * energia
+      set energia energia - 0.0001
+    ]
+end
+
+
+to pegar
+  let crianca-pega one-of other criancas-here with [not pegadora]; seleciona uma das outras crianças no mesmo patch
   if crianca-pega != nobody [
     ask crianca-pega [
       set pegadora true
@@ -196,9 +214,9 @@ NIL
 
 BUTTON
 67
-117
+119
 130
-150
+152
 go
 go
 T
