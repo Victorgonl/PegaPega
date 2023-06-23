@@ -1,10 +1,8 @@
 globals [
-  tamanho-campo
+  tamanho-objetos
   tamanho-criancas
   energia-maxima
   energia-minima
-  velocidade-maxima
-  velocidade-minima
   distancia-seguranca
   distancia-fugir
 ]
@@ -12,27 +10,72 @@ globals [
 breed [ criancas crianca ]
 
 patches-own [
-  tipo ; atributo para identificar o tipo de patch (parede ou não)
+  tipo ; atributo para identificar o tipo de patch (obstaculo ou não)
 ]
 
 turtles-own [
   energia
   velocidade
-  pegadora ; atributo para marcar a tartaruga como "pegadora"
-  fugindo
+  pegadora? ; atributo para marcar a tartaruga como "pegadora?"
+  fugindo?
+  imune?
 ]
 
-; função para desenhar as bordas do campo e marcar as paredes
-to desenhar-paredes
-  ; desenha as paredes da esquerda e direita
-  ask patches with [abs pxcor = max-pxcor] [
+to desenhar-bordas
+  ; desenha as obstaculos da esquerda e direita
+  ask patches with [abs pxcor <= max-pxcor and abs pxcor >= max-pxcor] [
     set pcolor white
-    set tipo "parede" ; marca o patch como uma parede
+    set tipo "obstaculo" ; marca o patch como uma obstaculo
   ]
-  ; desenha as paredes de cima e baixo
-  ask patches with [abs pycor = max-pycor] [
+  ; desenha as obstaculos de cima e baixo
+  ask patches with [abs pycor <= max-pycor and abs pycor >= max-pycor] [
     set pcolor white
-    set tipo "parede" ; marca o patch como uma parede
+    set tipo "obstaculo" ; marca o patch como uma obstaculo
+  ]
+end
+
+to desenhar-arvore [a b]
+  if not any? patches with [(pxcor = a) and (pycor = b) and (tipo = "obstaculo")] [
+    ask patches with [(pxcor = a) and (pycor = b)] [
+      set pcolor green
+      set tipo "obstaculo"
+    ]
+  ]
+end
+
+to desenhar-parede [a b c]
+  let choice random 2
+  if choice = 0 [
+    ask patches with [(pxcor >= a) and (pxcor <= b) and pycor = c] [
+      set pcolor gray
+      set tipo "obstaculo"
+    ]
+  ]
+  if choice = 1 [
+    ask patches with [(pycor >= a) and (pycor <= b) and pxcor = c] [
+      set pcolor gray
+      set tipo "obstaculo"
+    ]
+  ]
+end
+
+to desenhar-arvores-aleatorias
+  repeat numero-arvores [
+    let a (random (2 * max-pxcor + 1) - max-pxcor)
+    let b random (2 * max-pycor + 1) - max-pycor
+    desenhar-arvore a b
+    desenhar-arvore a + 1 b
+    desenhar-arvore a b + 1
+    desenhar-arvore a + 1 b + 1
+  ]
+end
+
+to desenhar-paredes-aleatorias
+  repeat numero-paredes [
+    let a (random (max-pxcor + 1) - max-pxcor)
+    let b a + 9
+    let c random (2 * max-pycor + 1) - max-pycor
+    desenhar-parede a b c
   ]
 end
 
@@ -44,9 +87,11 @@ to setup-mundo
   resize-world y x y x
   ask patches [
     set pcolor black
-    set tipo "" ; atributo vazio para patches não pertencentes a paredes
+    set tipo "" ; atributo vazio para patches não pertencentes a obstaculos
   ]
-  desenhar-paredes
+  desenhar-bordas
+  desenhar-arvores-aleatorias
+  desenhar-paredes-aleatorias
 end
 
 to setup-criancas
@@ -55,24 +100,21 @@ to setup-criancas
   let min-y min-pycor + 1
   let max-y max-pycor - 1
   set-default-shape turtles "circle 2"
-  create-criancas 20 [
-    setxy random-xcor random-ycor
-    while [xcor < min-x or xcor > max-x or ycor < min-y or ycor > max-y] [
-      setxy random-pxcor random-pycor
+  create-criancas numero-criancas [
+    let campo-vazio? false
+    while [not campo-vazio?] [
+      setxy random-xcor random-ycor
+      set campo-vazio? not any? patches in-radius tamanho-objetos with [tipo = "obstaculo"]
     ]
     set energia energia-maxima
     set velocidade random-float (velocidade-maxima - velocidade-minima) + velocidade-minima
-    ; set velocidade random velocidade-maxima
-    set pegadora false ; atributo "pegadora" definido como falso para todas as tartarugas
-    set fugindo false
+    set pegadora? false ; atributo "pegadora?" definido como falso para todas as tartarugas
+    set fugindo? false
+    set imune? false
     set size tamanho-criancas
   ]
-end
-
-to setup-pegadora
-  let random-turtle one-of turtles
-  ask random-turtle [
-    set pegadora true
+  ask one-of turtles [
+    set pegadora? true
     set shape "circle"
   ]
 end
@@ -80,38 +122,49 @@ end
 to setup
   clear-all
   ; constantes
-  set tamanho-campo 100
-  set tamanho-criancas 3
-  set distancia-seguranca 50
+  set tamanho-objetos 1
+  set tamanho-criancas 1
+  set distancia-seguranca 10
   set distancia-fugir 5
   set energia-maxima 1.0
   set energia-minima 0.0
-  set velocidade-maxima 1.0
-  set velocidade-minima 0.5
   ; cria o campo
   setup-mundo
-  ; cria as tartarugas e seleciona uma pegadora
+  ; cria as tartarugas e seleciona uma pegadora?
   setup-criancas
-  setup-pegadora
   reset-ticks
 end
 
 to go
   if not any? turtles [ stop ]
   ask criancas [
+    ifelse desenhar-trajeto?
+      [ pen-down ]
+      [ pen-up ]
     perseguir
     fugir
-    if energia < energia-minima [ die ]
+    if energia < energia-minima [
+      if pegadora? [
+        let outra-crianca one-of other turtles
+        if outra-crianca != nobody [
+          ask outra-crianca [
+            set pegadora? true
+            set shape "circle"
+          ]
+        ]
+      ]
+      die
+    ]
   ]
   tick
 end
 
 to perseguir
-  if pegadora = true [
-    ask turtles with [pegadora = true] [
-      let target min-one-of other turtles with [ pegadora = false ] [ distance myself ] ; seleciona a tartaruga mais próxima como alvo
+  if pegadora? = true [
+    ask turtles with [pegadora? = true] [
+      let target min-one-of other turtles with [ pegadora? = false and imune? = false ] [ distance myself ] ; seleciona a tartaruga mais próxima como alvo
       if target != nobody [
-        face target ; direciona a "pegadora" para o alvo
+        face target ; direciona a "pegadora?" para o alvo
         pegar
       ]
     ]
@@ -120,22 +173,24 @@ to perseguir
 end
 
 to fugir
-  if not pegadora [ ; crianças que estão fugindo da pegadora
-    let target one-of turtles with [pegadora = true] ; miram na criança pegadora
+  if not pegadora? [ ; crianças que estão fugindo? da pegadora?
+    let target one-of turtles with [pegadora? = true] ; miram na criança pegadora?
     if target != nobody [
-      let distance-to-target distance target ; calcula distância da criança pegadora
-      if distance-to-target <= distancia-fugir [ ; se a distância for menor que uma distância de segurança
-        set fugindo true ; começa a fugir
+      let distancia-do-pegador distance target ; calcula distância da criança pegadora?
+      if distancia-do-pegador <= distancia-fugir [ ; se a distância for menor que uma distância de segurança
+        set fugindo? true ; começa a fugir
       ]
-      if fugindo and not (distance-to-target <= distancia-fugir) [
-        set fugindo false
+      if fugindo? and not (distancia-do-pegador <= distancia-fugir) [
+        set fugindo? false
       ]
-      if fugindo [ ; se a criança estiver fugindo
-        set heading (towards target + 180) ; ira se direcionar para a direção oposta da pegadora
+      if fugindo? [ ; se a criança estiver fugindo?
+        set heading (towards target + 180) ; ira se direcionar para a direção oposta da pegadora?
       ]
-      if distance-to-target < distancia-seguranca [
+      if distancia-do-pegador < distancia-seguranca [
         rt random 45
         lt random 45
+      ]
+      if fugindo? or (distancia-do-pegador < distancia-seguranca)[
         correr
       ]
     ]
@@ -144,39 +199,42 @@ end
 
 to correr
   let caminhos-ao-redor patches in-radius tamanho-criancas
-  if any? caminhos-ao-redor with [tipo = "parede"] [
-     let caminho one-of caminhos-ao-redor with [tipo != "parede"]
-    if caminho != nobody [
-      face caminho
-    ]
+  if any? caminhos-ao-redor with [tipo = "obstaculo"] [
+     let caminho one-of caminhos-ao-redor with [tipo != "obstaculo"]
+     if caminho != nobody [
+       face caminho
+     ]
   ]
   fd velocidade * energia
   set energia energia - 0.0001
 end
 
-
-
 to pegar
-  let crianca-pega one-of other criancas-here with [not pegadora]; seleciona uma das outras crianças no mesmo patch
+  let crianca-pega one-of other criancas-here with [not pegadora?]; seleciona uma das outras crianças no mesmo patch
   if crianca-pega != nobody [
     ask crianca-pega [
-      set pegadora true
+      set pegadora? true
       set shape "circle"
     ]
-    set pegadora false
-    set shape "circle 2"
-    set heading (- heading)
+    ask criancas [
+      set imune? false
+    ]
+    if not multiplos-pegadores [
+      set pegadora? false
+      set imune? true
+      set shape "circle 2"
+    ]
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-723
-524
+214
+18
+684
+489
 -1
 -1
-5.0
+18.5
 1
 10
 1
@@ -186,10 +244,10 @@ GRAPHICS-WINDOW
 0
 0
 1
--50
-50
--50
-50
+-12
+12
+-12
+12
 1
 1
 1
@@ -197,11 +255,11 @@ ticks
 60.0
 
 BUTTON
-67
-48
-130
-81
-setup
+68
+349
+134
+382
+SETUP
 setup
 NIL
 1
@@ -214,11 +272,11 @@ NIL
 1
 
 BUTTON
-67
-118
-130
-151
-go
+71
+401
+126
+434
+GO!
 go
 T
 1
@@ -229,6 +287,117 @@ NIL
 NIL
 NIL
 0
+
+SLIDER
+43
+295
+160
+328
+numero-criancas
+numero-criancas
+4
+35
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+251
+189
+284
+numero-paredes
+numero-paredes
+0
+6
+3.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+16
+205
+188
+238
+tamanho-campo
+tamanho-campo
+20
+30
+25.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+18
+164
+190
+197
+numero-arvores
+numero-arvores
+0
+4
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+19
+122
+191
+155
+velocidade-maxima
+velocidade-maxima
+0.1
+0.5
+0.3
+0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+19
+77
+191
+110
+velocidade-minima
+velocidade-minima
+0.1
+0.5
+0.3
+0.1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+29
+21
+183
+66
+multiplos-pegadores
+multiplos-pegadores
+false true
+0
+
+SWITCH
+21
+445
+169
+478
+desenhar-trajeto?
+desenhar-trajeto?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
