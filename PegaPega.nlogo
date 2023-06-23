@@ -6,6 +6,7 @@ globals [
   velocidade-maxima
   velocidade-minima
   distancia-seguranca
+  distancia-fugir
 ]
 
 breed [ criancas crianca ]
@@ -81,11 +82,12 @@ to setup
   ; constantes
   set tamanho-campo 100
   set tamanho-criancas 3
-  set distancia-seguranca 10
+  set distancia-seguranca 50
+  set distancia-fugir 5
   set energia-maxima 1.0
   set energia-minima 0.0
   set velocidade-maxima 1.0
-  set velocidade-minima 1
+  set velocidade-minima 0.5
   ; cria o campo
   setup-mundo
   ; cria as tartarugas e seleciona uma pegadora
@@ -122,38 +124,36 @@ to fugir
     let target one-of turtles with [pegadora = true] ; miram na criança pegadora
     if target != nobody [
       let distance-to-target distance target ; calcula distância da criança pegadora
-      if distance-to-target <= distancia-seguranca [ ; se a distância for menor que uma distância de segurança
+      if distance-to-target <= distancia-fugir [ ; se a distância for menor que uma distância de segurança
         set fugindo true ; começa a fugir
       ]
-      if fugindo and not (distance-to-target <= distancia-seguranca) [
+      if fugindo and not (distance-to-target <= distancia-fugir) [
         set fugindo false
       ]
       if fugindo [ ; se a criança estiver fugindo
         set heading (towards target + 180) ; ira se direcionar para a direção oposta da pegadora
       ]
-      rt random 45
-      lt random 45
-      correr
+      if distance-to-target < distancia-seguranca [
+        rt random 45
+        lt random 45
+        correr
+      ]
     ]
   ]
 end
 
 to correr
-    if patch-ahead (tamanho-criancas + (velocidade * energia)) != nobody [
-      if [tipo] of patch-ahead (tamanho-criancas + (velocidade * energia)) = "parede" [ ; se movimenta se não houver uma parede na frente
-        let choice random 1
-        (ifelse
-          choice = 0 [
-            lt (random 90) + 90
-          ]
-          choice = 1 [
-            rt (random 90) + 90
-        ])
-      ]
-      fd velocidade * energia
-      set energia energia - 0.0001
+  let caminhos-ao-redor patches in-radius tamanho-criancas
+  if any? caminhos-ao-redor with [tipo = "parede"] [
+     let caminho one-of caminhos-ao-redor with [tipo != "parede"]
+    if caminho != nobody [
+      face caminho
     ]
+  ]
+  fd velocidade * energia
+  set energia energia - 0.0001
 end
+
 
 
 to pegar
@@ -165,6 +165,7 @@ to pegar
     ]
     set pegadora false
     set shape "circle 2"
+    set heading (- heading)
   ]
 end
 @#$#@#$#@
@@ -214,9 +215,9 @@ NIL
 
 BUTTON
 67
-119
+118
 130
-152
+151
 go
 go
 T
