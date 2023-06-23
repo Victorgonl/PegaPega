@@ -1,3 +1,4 @@
+; variáveis globais
 globals [
   tamanho-objetos
   tamanho-criancas
@@ -7,33 +8,37 @@ globals [
   distancia-fugir
 ]
 
+; tartarugas crianças
 breed [ criancas crianca ]
 
-patches-own [
-  tipo ; atributo para identificar o tipo de patch (obstaculo ou não)
-]
-
-turtles-own [
+; atributos das criancas
+criancas-own [
   energia
   velocidade
-  pegadora? ; atributo para marcar a tartaruga como "pegadora?"
-  fugindo?
-  imune?
+  pegadora? ; se a crianca é uma pegadora
+  fugindo? ; se a criança está fugindo de uma pegadora
+  imune? ; se a criança é imune a pegadora
 ]
 
+patches-own [
+  tipo ; identificação do tipo de patch ("obstaculo" ou não)
+]
+
+; desenha os limites do mundo
 to desenhar-bordas
-  ; desenha as obstaculos da esquerda e direita
+  ; desenha os limites da esquerda e direita
   ask patches with [abs pxcor <= max-pxcor and abs pxcor >= max-pxcor] [
     set pcolor white
-    set tipo "obstaculo" ; marca o patch como uma obstaculo
+    set tipo "obstaculo" ; marca o limite como uma obstaculo
   ]
-  ; desenha as obstaculos de cima e baixo
+  ; desenha os limites de cima e baixo
   ask patches with [abs pycor <= max-pycor and abs pycor >= max-pycor] [
     set pcolor white
-    set tipo "obstaculo" ; marca o patch como uma obstaculo
+    set tipo "obstaculo" ; marca o limite como uma obstaculo
   ]
 end
 
+; desenha uma arvore (um patch verde)
 to desenhar-arvore [a b]
   if not any? patches with [(pxcor = a) and (pycor = b) and (tipo = "obstaculo")] [
     ask patches with [(pxcor = a) and (pycor = b)] [
@@ -43,15 +48,15 @@ to desenhar-arvore [a b]
   ]
 end
 
-to desenhar-parede [a b c]
-  let choice random 2
-  if choice = 0 [
+; desenha uma parede (vertical ou horizontal)
+to desenhar-parede [a b c d?]
+  if d? [
     ask patches with [(pxcor >= a) and (pxcor <= b) and pycor = c] [
       set pcolor gray
       set tipo "obstaculo"
     ]
   ]
-  if choice = 1 [
+  if not d? [
     ask patches with [(pycor >= a) and (pycor <= b) and pxcor = c] [
       set pcolor gray
       set tipo "obstaculo"
@@ -59,6 +64,7 @@ to desenhar-parede [a b c]
   ]
 end
 
+; desenha N árvores aleatórias de dimensão 2x2
 to desenhar-arvores-aleatorias
   repeat numero-arvores [
     let a (random (2 * max-pxcor + 1) - max-pxcor)
@@ -70,16 +76,18 @@ to desenhar-arvores-aleatorias
   ]
 end
 
+; desenha N paredes aleatórias de dimensão 1x10 ou 10x1
 to desenhar-paredes-aleatorias
   repeat numero-paredes [
     let a (random (max-pxcor + 1) - max-pxcor)
     let b a + 9
     let c random (2 * max-pycor + 1) - max-pycor
-    desenhar-parede a b c
+    let d? random 2 = 1
+    desenhar-parede a b c d?
   ]
 end
 
-; função para criar campo
+; cria o campo
 to setup-mundo
   ; tamanho do mundo
   let x (tamanho-campo / 2)
@@ -87,13 +95,14 @@ to setup-mundo
   resize-world y x y x
   ask patches [
     set pcolor black
-    set tipo "" ; atributo vazio para patches não pertencentes a obstaculos
+    set tipo "campo" ; atributo "campo" para patches não pertencentes a "obstaculos"
   ]
-  desenhar-bordas
-  desenhar-arvores-aleatorias
   desenhar-paredes-aleatorias
+  desenhar-arvores-aleatorias
+  desenhar-bordas
 end
 
+; cria as crianças
 to setup-criancas
   let min-x min-pxcor + 1
   let max-x max-pxcor - 1
@@ -108,11 +117,12 @@ to setup-criancas
     ]
     set energia energia-maxima
     set velocidade random-float (velocidade-maxima - velocidade-minima) + velocidade-minima
-    set pegadora? false ; atributo "pegadora?" definido como falso para todas as tartarugas
+    set pegadora? false
     set fugindo? false
     set imune? false
     set size tamanho-criancas
   ]
+  ; escolhe uma pegadora inicial aleatória
   ask one-of turtles [
     set pegadora? true
     set shape "circle"
@@ -121,50 +131,49 @@ end
 
 to setup
   clear-all
-  ; constantes
   set tamanho-objetos 1
   set tamanho-criancas 1
-  set distancia-seguranca 10
-  set distancia-fugir 5
+  set distancia-seguranca 10 ; distância para começar a se movimentar
+  set distancia-fugir 5 ; distância para fugir da pegadora
   set energia-maxima 1.0
   set energia-minima 0.0
-  ; cria o campo
   setup-mundo
-  ; cria as tartarugas e seleciona uma pegadora?
   setup-criancas
   reset-ticks
 end
 
 to go
-  if not any? turtles [ stop ]
+  ; para quando não há mais criancas
+  if not any? criancas [ stop ]
   ask criancas [
     ifelse desenhar-trajeto?
       [ pen-down ]
       [ pen-up ]
-    perseguir
-    fugir
-    if energia < energia-minima [
-      if pegadora? [
+    perseguir ; pegadoras perseguem
+    fugir ; outras fojem
+    if energia < energia-minima [ ; se a energia da criança acaba
+      if pegadora? [ ; se a criança for pegadora
         let outra-crianca one-of other turtles
         if outra-crianca != nobody [
-          ask outra-crianca [
+          ask outra-crianca [ ; outra criança é selecionada como pegadora
             set pegadora? true
             set shape "circle"
           ]
         ]
       ]
-      die
+      die ; criança sai do jogo
     ]
   ]
   tick
 end
 
+; pegada persegue a criança mais próxima e não imune
 to perseguir
   if pegadora? = true [
-    ask turtles with [pegadora? = true] [
-      let target min-one-of other turtles with [ pegadora? = false and imune? = false ] [ distance myself ] ; seleciona a tartaruga mais próxima como alvo
+    ask turtles with [ pegadora? ] [
+      let target min-one-of other turtles with [ not pegadora? and not imune? ] [ distance myself ] ; seleciona a tartaruga mais próxima como alvo
       if target != nobody [
-        face target ; direciona a "pegadora?" para o alvo
+        face target
         pegar
       ]
     ]
@@ -172,43 +181,56 @@ to perseguir
   ]
 end
 
+; criança se mantém parada, em movimento ou corre da pegadora
 to fugir
-  if not pegadora? [ ; crianças que estão fugindo? da pegadora?
-    let target one-of turtles with [pegadora? = true] ; miram na criança pegadora?
-    if target != nobody [
-      let distancia-do-pegador distance target ; calcula distância da criança pegadora?
-      if distancia-do-pegador <= distancia-fugir [ ; se a distância for menor que uma distância de segurança
-        set fugindo? true ; começa a fugir
+  if not pegadora? [ ; crianças que estão fugindo da pegadora
+    let crianca-pegadora one-of turtles with [ pegadora? ] ; miram na criança pegadora
+    if crianca-pegadora != nobody [
+      let distancia-do-pegador distance crianca-pegadora ; calcula a distância da criança pegadora
+      if distancia-do-pegador <= distancia-fugir [ ; começa a fugir
+        set fugindo? true
       ]
-      if fugindo? and not (distancia-do-pegador <= distancia-fugir) [
+      if fugindo? and not (distancia-do-pegador <= distancia-fugir) [ ; deixa de fugir
         set fugindo? false
       ]
-      if fugindo? [ ; se a criança estiver fugindo?
-        set heading (towards target + 180) ; ira se direcionar para a direção oposta da pegadora?
+      if fugindo? [ ; ira se direcionar para a direção oposta da pegadora
+        set heading (towards crianca-pegadora + 180)
       ]
-      if distancia-do-pegador < distancia-seguranca [
-        rt random 45
-        lt random 45
+      if distancia-do-pegador < distancia-seguranca [ ; irá alterar seu sentido aleatoriamente
+        rt random 30
+        lt random 30
       ]
-      if fugindo? or (distancia-do-pegador < distancia-seguranca)[
+      if fugindo? or (distancia-do-pegador < distancia-seguranca) [
         correr
+      ]
+      if distancia-do-pegador > distancia-seguranca [
+        if descansar? [
+          if energia < energia-maxima [
+            set energia energia + 0.0005
+          ]
+        ]
       ]
     ]
   ]
 end
 
+; a movimentação é feita com base na velocidade e da energia
+; caso um obstáculo estiver no raio de uma criança, ela mudará seu percurso
 to correr
   let caminhos-ao-redor patches in-radius tamanho-criancas
   if any? caminhos-ao-redor with [tipo = "obstaculo"] [
-     let caminho one-of caminhos-ao-redor with [tipo != "obstaculo"]
-     if caminho != nobody [
-       face caminho
-     ]
+    let caminho one-of caminhos-ao-redor with [tipo != "obstaculo"]
+    if caminho != nobody [
+      face caminho
+    ]
   ]
   fd velocidade * energia
-  set energia energia - 0.0001
+  set energia energia - 0.001
 end
 
+; se um pegador alcança outra criança, ele deixa de ser pegador
+; a criança pega se torna o novo pegador
+; a criança que era o pegador se torna imune para a próxima rodada
 to pegar
   let crianca-pega one-of other criancas-here with [not pegadora?]; seleciona uma das outras crianças no mesmo patch
   if crianca-pega != nobody [
@@ -229,9 +251,9 @@ end
 @#$#@#$#@
 GRAPHICS-WINDOW
 214
-18
+20
 684
-489
+491
 -1
 -1
 18.5
@@ -255,10 +277,10 @@ ticks
 60.0
 
 BUTTON
-68
-349
-134
-382
+67
+335
+133
+368
 SETUP
 setup
 NIL
@@ -272,10 +294,10 @@ NIL
 1
 
 BUTTON
-71
-401
-126
-434
+72
+375
+127
+408
 GO!
 go
 T
@@ -389,13 +411,34 @@ false true
 0
 
 SWITCH
-21
-445
-169
-478
+25
+459
+173
+492
 desenhar-trajeto?
 desenhar-trajeto?
 1
+1
+-1000
+
+TEXTBOX
+31
+521
+181
+586
+OBSERVAÇÃO: A geração aleatória de obstáculos (muros e árvores) podem resultar em objetos renderizados fora de áreas vazias.
+10
+0.0
+1
+
+SWITCH
+40
+416
+152
+449
+descansar?
+descansar?
+0
 1
 -1000
 
