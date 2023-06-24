@@ -469,7 +469,7 @@ Turma: 10A
 
 ## WHAT IS IT?
 
-Este modelo tem como objetivo simular o comportamento de crianças no tradicional jogo de *Pega-Pega*. O jogo consiste em crianças correndo em um campo fechado com obstáculos que elas não devem ser capazes de atravessar. Uma das crianças será escolhida como a `pegadora`, que irá perseguir as outras crianças. Quando uma criança é pega, ela se torna a pegadora e passa a perseguir as crianças. A simulação termina quando todas as crianças esgotam sua energia.
+Este modelo tem como objetivo simular o comportamento de crianças no tradicional jogo de *Pega-Pega*. O jogo consiste em crianças correndo em um campo fechado com obstáculos que elas não devem ser capazes de atravessar. Uma das crianças será escolhida como a pegadora, que irá perseguir as outras crianças. Quando uma criança é pega, ela se torna a pegadora e passa a perseguir as crianças. A simulação termina quando todas as crianças esgotam sua energia.
 
 ## HOW IT WORKS
 
@@ -477,11 +477,11 @@ Após a criação do cenário com os obstáculos, as crianças são colocadas no
 
 As crianças que fogem possuem seu comportamento variando de acordo com a distância que elas estão do pegador. Existe um limite definido como a `distância de segurança`, que se refere a distância que a criança está do pegador para começar a se movimentar (de forma aleatória) pelo campo. Já um outro limite inferior definido como a `distância para fugir`, é o limiar que faz com que uma criança esteja de fato fugindo do pegador, definindo seu sentido para `correr` na direção oposta do mesmo. As crianças que estão em uma distância de segurança irão ficar paradas e, opcionalmente `descansando`, o que recupera sua energia que é cada sempre ao correr.
 
-Uma criança pegadora irá sempre estar perseguindo a criança não pegadora e não `imune` mais próxima dela. Por estar sempre correndo, a pegadora nunca irá ficar realmente para, nunca descansando, sendo assim a criança mais provável de esgotar sua energia e sair da brincadeira. Quando uma pegadora sai, outra criança entra em seu lugar como a pegadora, que reinicia a brincadeira e garante que haverá um fim na simulação com o esgotamento de todas as crianças.
+Uma criança pegadora irá sempre estar perseguindo uma criança não `imune` mais próxima dela. Por estar sempre correndo, nunca estará descansando, sendo assim a criança pegadora será a mais provável de esgotar sua energia e sair da brincadeira. Quando uma pegadora sai, outra criança entra em seu lugar como a pegadora, que reinicia a brincadeira e garante que haverá um fim na simulação com o esgotamento de todas as crianças.
 
-A velocidade em que as crianças fojem são diretamente proporcinal com seu próprio atributo de `velocidade`, que é decidido aleatoriamente entre os parâmetros de `velocidade mínima` e `velocidade máxima`, e sua `energia`, que diminue toda vez que elas se movimentam.
+As velocidades em que as crianças fogem são diretamente proporcinais com seu próprio atributo de `velocidade`, que é decidido aleatoriamente entre os parâmetros de `velocidade mínima` e `velocidade máxima`, e sua `energia`, que diminuem toda vez em que elas se movimentam.
 
-Sempre que uma criança pegadora `pegar` outra criança, a última passa a ser a nova pegadora e a ex-pegadora se torna imune, o que significa que a pegadora atual não irá persegui-la. A criança deixa de ser imune quando uma nova criança e pega, passando sua imunidade adiante. A imunidade garante que duas crianças não fiquem pegando uma a outra até a exautão, pois estarem tão próximas.
+Sempre que uma criança pegadora `pegar` outra criança, a última passa a ser a nova pegadora e a ex-pegadora se torna imune, o que significa que a pegadora atual não irá perseguí-la. A criança deixa de ser imune quando uma nova criança é pega, passando sua imunidade adiante. A imunidade garante que duas crianças não fiquem pegando uma a outra até a exaustão por estarem tão próximas.
 
 Seguindo estas regras, o final da simulação é previsto com duas crianças sobrando no campo, uma sendo a pegadora e outra imune.
 
@@ -499,21 +499,21 @@ Seguindo estas regras, o final da simulação é previsto com duas crianças sob
 
 - `numero-paredes`: 3
 
-- `tamanho-campo`: 25s
+- `tamanho-campo`: 25
 
 - `numero-criancas`: 20
 
 - `descansar?`: on
 
-Após ajustadas, utilizar `SETUP` para criar o ambiente de simulação e `GO!` para inicia-lá.
+Após ajustadas, utilizar `SETUP` para criar o ambiente de simulação e `GO!` para iniciá-la.
 
 A simulação irá parar quando todas as crianças esgotarem suas energias.
 
-**OBSERVAÇÃO:** A geração aleatória de obstáculos (muros e árvores) podem resultar em objetos renderizados fora de áreas vazias.
+**OBSERVAÇÃO:** A geração aleatória de obstáculos (muros e árvores) pode resultar em objetos renderizados fora de áreas vazias.
 
 ## THINGS TO NOTICE
 
-É possível perceber que o estado de pegador é o que mais gasta energia das crianças, por estar em constante movimento. Com o movimento, mais energia é gasta e mais lenta a criança irá ficar, causando uma enevitável exaustão por não conseguir pegar outras crianças.
+É possível perceber que o estado de pegador é o que mais gasta energia das crianças, por estar em constante movimento, desta maneira a criança pegadora ficará mais lenta, causando uma inevitável exaustão por não conseguir pegar outras crianças.
 
 O jogo tem uma tendência de ir "esfriando" quando uma pegadora não é capaz de pegar outras crianças e "quente" quando uma nova pegadora é selecionada, onde as crianças estarão mais descansadas e consequentemente correndo mais rápido.
 
@@ -527,7 +527,7 @@ O modelo tem grandes capacidades para melhorias e novos recursos.
 
 Entre as possíveis melhorias, podemos citar:
 
-- o comportamento das crianças perto dos obstáculos, que muita das vezes as deixam presas para fugir ou perseguir;
+- o comportamento das crianças perto dos obstáculos, que muitas vezes as deixam presas para fugir ou perseguir;
 
 - o comportamento de fugir não tratar de decidir um caminho em grafo para tentar escapar;
 
@@ -535,7 +535,7 @@ Entre as possíveis melhorias, podemos citar:
 
 - a geração de obstáculos não tratar de sobrepor outros obstáculos;
 
-- adicionar mais parâmetros configuraveis na interface do modelo.
+- adicionar mais parâmetros configuráveis na interface do modelo.
 
 O modelo também dá início a uma variação da simulação onde os pegadores são acumulados, levando ao jogo terminar quando todas as crianças são pegas. Está variação pode ser melhorada a fim de garantir um jogo mais competitivo.
 
