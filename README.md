@@ -88,7 +88,7 @@ Outra ideia de variação é uma simulação onde os jogadores pegos saem do jog
 
 ## NETLOGO FEATURES
 
-O modelo usa apenas um tipo de `turtle`, que podem variar suas características durante a simulação para decidir os comportamentos das crianças, assim como suas representações vizuais.
+O modelo usa apenas um tipo de `turtle`, que podem variar suas características durante a simulação para decidir os comportamentos das crianças, assim como suas representações visuais.
 
 O modelo também manipula os `patches` a fim de simular um `obstáculo`, e varia suas cores para diferenciar `muros` e `arvores`.
 
@@ -100,7 +100,7 @@ No código é utilizado:
 
 - `patches in-radius` para saber se existe um obstáculo no ao redor de uma crinaça;
 
-- `one-of other` para selecionar outra criança direfente da atual.
+- `one-of other` para selecionar outra criança diferente da atual.
 
 ## RELATED MODELS
 
